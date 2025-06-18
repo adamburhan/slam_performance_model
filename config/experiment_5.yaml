@@ -1,0 +1,43 @@
+experiment_name: 'resnet18_stacked'
+
+# Model parameters
+model:
+  architecture: 'resnet18' # Model architecture: alexnet, resnet18, resnet34, etc.
+  pretrained: true        
+  weights_path: '/ood_slam/models/pretrained_weights/resnet18_pretrained.pth'    
+  input_channels: 6       # Number of input channels (e.g., 3 for RGB, 6 for stereo)
+  num_outputs: [3, 5]     # Number of outputs: e.g., 3 for rotation, 5 for translation
+  output_dir: '/home/adamb14/scratch/outputs/'          
+
+# Dataset parameters
+dataset:
+  images_dir: '/scratch/adamb14/kitti/odometry_gray/sequences'    
+  flipped_images_dir: ''  
+  errors_dir: '/scratch/adamb14/data/errors/discretized'                       
+  batch_size: 32                                                                       
+  num_workers: 4                                                                   
+  sequence_length: 2                                                                    
+
+# Data augmentation and transformation parameters
+data_transforms:
+  resize: [224, 224]                   
+  mean: [0.485, 0.456, 0.406]          
+  std: [0.229, 0.224, 0.225]            
+
+# Training Parameters
+training:
+  task: 'classification'                
+  loss_function: 'EMDSquaredLoss'       
+  optimizer: 'Adam'                     
+  learning_rate_groups:
+    pretrained_lr: 0.0001
+    new_lr: 0.001
+  weight_decay: 0.0001                
+  num_epochs: 25                       
+
+# Logging Parameters
+logging:
+  use_wandb: false                      
+  wandb_project: 'ood-slam'           
+  wandb_entity: 'udem-mila'         
+  log_interval: 10                      

@@ -1,0 +1,25 @@
+{
+    "dataset": {
+      "images_dir": "/media/adam/T9/ood_slam_data/datasets/kitti/odometry_gray/sequences",
+      "errors_dir": "/media/adam/T9/slam_performance_model/data/errors/discretized",
+      "batch_size": 64,
+      "sequence_length": 1
+    },
+    "model": {
+      "name": "AlexNet", 
+      "num_classes": 10,
+      "weights_path": "/home/adam/Documents/MILA/projects/ood_slam/slam_performance_model/models/pretrained_weights/alexnet_weights.pth",
+      "output_dir": "/home/adam/Documents/research_internship/ood_slam/slam_performance_model/models",
+      "input_channels": 6
+    },
+    "training": {
+      "num_epochs": 25,
+      "learning_rate": 0.001,
+      "loss_function": "CrossEntropyLoss"
+    },
+    "wandb": {
+      "project_name": "slam_performance_model",
+      "entity": "your_wandb_username"
+    }
+  }
+  

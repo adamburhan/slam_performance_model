@@ -7,7 +7,7 @@ model:
   weights_path: '/dataset/pretrained_weights/alexnet_weights.pth'   
   input_channels: 3       # Number of input channels (e.g., 3 for RGB, 6 for stereo)
   num_outputs: [5, 5]     # Number of outputs: e.g., 3 for rotation, 5 for translation
-  output_dir: '/final_log/'          
+  output_dir: '/tmp_log/'          
 
 # Dataset parameters
 dataset:
@@ -16,7 +16,28 @@ dataset:
   horizon: 5               
   batch_size: 32                                                                       
   num_workers: 4                        
-  feature_dim: 3                                                                                                            
+  feature_dim: 3                     
+
+  dataset_dict:
+    train:
+      euroc: [
+        "MH_01_easy", 
+        "MH_03_medium",
+        "MH_04_difficult",
+        "MH_05_difficult",
+        "V1_01_easy",
+        "V1_03_difficult",
+        "V2_01_easy",
+        "V2_02_medium",
+        "V2_03_difficult"
+      ]
+      
+    val:
+      euroc: [
+        "MH_02_easy",
+        "V1_02_medium",
+      ]
+                                                                                         
 
 # Data augmentation and transformation parameters
 data_transforms:
@@ -29,10 +50,8 @@ training:
   task: 'classification'                
   loss_function: 'EMDSquaredLoss'       
   optimizer: 'Adam'                     
-  learning_rate_groups:
-    pretrained_lr: 0.0001
-    new_lr: 0.001
-  weight_decay: 0.0001                
+  learning_rate: 0.001
+  weight_decay: 0.01                
   num_epochs: 25                       
 
 # Logging Parameters

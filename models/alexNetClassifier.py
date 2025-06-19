@@ -115,9 +115,7 @@ class AlexNetSLAMClassifier(nn.Module):
         nn.init.kaiming_normal_(self.fc2.weight)
         nn.init.constant_(self.fc2.bias, 0)
 
-import torch
-import torch.nn as nn
-from torchvision import models
+
 
 class AlexNetSLAMClassifierTest(nn.Module):
     def __init__(self, weights_path, num_classes, context_len, input_channels=3, feature_dim=10):

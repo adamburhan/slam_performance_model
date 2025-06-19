@@ -4,133 +4,167 @@ load configurations and call the appropriate functions to start training or eval
 """
 
 # main.py
+import torch
+import torch.optim as optim
+from torch.utils.data import DataLoader
 
+import numpy as np
+
+import random
+
+import os
 import argparse
 import yaml
-import torch
-from data.kitti_dataset import KITTIDataset, MultiDataset
-from scripts.train import train
+import time
+import tqdm
+
+from data.datasets import MultiDataset, get_datasets
+from scripts.train import train as train_model
 from scripts.train import evaluate
 from utils.logging import get_logger
 from torchvision import transforms
 from utils.losses import get_loss_function, EMDSquaredLoss
-import os
 from models.get_model import get_model
 from scripts.results import compute_metrics, create_aggregated_probability_matrix, visualize_confusion_matrix
 
-def main():
-    parser = argparse.ArgumentParser(description='SLAM Performance Model Training')
-    parser.add_argument('--config', type=str, required=True, help='Path to the configuration file.')
-    args = parser.parse_args()
+def seed_experiment(seed):
+    """Seed the pseudorandom number generator, for repeatability
+    
+    Args:
+        seed (int): random seed
+    """
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
-    with open(args.config, 'r') as f:
-        config = yaml.safe_load(f)
 
-    logger = get_logger(config)
+class DummyScheduler:
+    """
+    Dummy LR Scheduler that supports standard methods like state_dict, load_state_dict, etc.,
+    but does nothing to the optimizer or learning rates.
+    """
+    def __init__(self, optimizer, *args, **kwargs):
+        """
+        Initialize the DummyScheduler.
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(f"Using device: {device}")
+        Args:
+            optimizer (Optimizer): Wrapped optimizer (required to match the API, not used).
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+        """
+        self.optimizer = optimizer
+        self._state = {}
 
-    # Initialize the model based on the config
-    model = get_model(config)
-    model.to(device)
+    def step(self, *args, **kwargs):
+        """
+        Dummy step function that does nothing.
 
-    images_dir = config['dataset']['images_dir']
-    flipped_images_dir = config['dataset']['flipped_images_dir']
-    errors_dir = config['dataset']['errors_dir']
+        Args:
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+        """
+        pass
 
-    # Define data transforms
-    num_channels = config['model']['input_channels']
-    mean = [0.485, 0.456, 0.406]
-    std = [0.229, 0.224, 0.225]
+    def state_dict(self):
+        """
+        Return the state of the scheduler as a dictionary.
 
-    train_transforms = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=mean, std=std),
-    ])
+        Returns:
+            dict: A dictionary representing the scheduler's state.
+        """
+        return self._state
 
-    val_transforms = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=mean, std=std),
-    ])
+    def load_state_dict(self, state_dict):
+        """
+        Load the scheduler's state from a dictionary.
 
-    # Prepare datasets and dataloaders
-    train_sequence_dirs = [f'{images_dir}/{i:02d}' for i in range(9)]
-    train_flipped_sequence_dirs = [f'{flipped_images_dir}/{i:02d}' for i in range(9)]
-    train_label_files = [f'{errors_dir}/{i:02d}.csv' for i in range(9)]
+        Args:
+            state_dict (dict): The state dictionary to load.
+        """
+        self._state.update(state_dict)
 
-    train_dataset = KITTIDataset(sequence_dirs=train_sequence_dirs, flipped_sequence_dirs=train_flipped_sequence_dirs, label_files=train_label_files,
-                                 sequence_length=config['dataset']['sequence_length'], transform=train_transforms)
+    def get_last_lr(self):
+        """
+        Get the last computed learning rate(s).
 
-    val_sequence_dirs = [f'{images_dir}/{i:02d}' for i in range(9, 11)]
-    val_flipped_sequence_dirs = [f'{flipped_images_dir}/{i:02d}' for i in range(9, 11)]
-    val_label_files = [f'{errors_dir}/{i:02d}.csv' for i in range(9, 11)]
-    val_dataset = KITTIDataset(sequence_dirs=val_sequence_dirs, flipped_sequence_dirs=val_flipped_sequence_dirs, label_files=val_label_files,
-                               sequence_length=config['dataset']['sequence_length'], transform=val_transforms)
-
-    train_loader = torch.utils.data.DataLoader(
+        Returns:
+            list: A list of the last learning rates.
+        """
+        return [group['lr'] for group in self.optimizer.param_groups]
+    
+def train(config):
+    # Seed the experiment, for repeatability
+    seed_experiment(config['seed'])
+    
+    # Create a directory to save the experiment results
+    base_path = os.path.join(config['log_dir'], config['exp_id'])
+    checkpoint_path = base_path
+    i = 0
+    while os.path.exists(checkpoint_path):
+        i += 1
+        checkpoint_path = f"{base_path}_{i}"
+    os.makedirs(checkpoint_path, exist_ok=True)
+    
+    # Data    
+    train_dataset, val_dataset = get_datasets(config)
+    
+    train_loader = DataLoader(
         train_dataset,
-        batch_size=config['dataset']['batch_size'],
+        batch_size=min(config['dataset']['train_batch_size'], len(train_dataset)),
         shuffle=True,
-        num_workers=config['dataset'].get('num_workers', 4),
-        pin_memory=True
+        num_workers=config['dataset']['num_workers']
     )
-
-    val_loader = torch.utils.data.DataLoader(
-        val_dataset,
-        batch_size=config['dataset']['batch_size'],
+    
+    train_loader_for_eval = DataLoader(
+        train_dataset,
+        batch_size=min(config['dataset']['eval_batch_size'], len(train_dataset)),
         shuffle=False,
-        num_workers=config['dataset'].get('num_workers', 4),
-        pin_memory=True
+        num_workers=config['dataset']['num_workers']
     )
+    
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=min(config['dataset']['eval_batch_size'], len(val_dataset)),
+        shuffle=False,
+        num_workers=config['dataset']['num_workers']
+    )
+    
+    # Model
+    model = get_model(config)
+    model.to(config['misc']['device'])
+    
+    # Optimizer
+    optimizer = config['optimization']['optimizer']
+    lr = config['optimization']['lr']
+    weight_decay = config['optimization']['weight_decay']
+    if optimizer == "adamw":
+        optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+    elif optimizer == "adam":
+        optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    elif optimizer == "sgd":
+        optimizer = optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay)
+    elif optimizer == "momentum":
+        optimizer = optim.SGD(model.parameters(), lr=lr, 
+                              momentum=config['optimization']['momentum'], 
+                              weight_decay=weight_decay)
+        
+    scheduler = DummyScheduler(optimizer)  # Change later to real scheduler if needed
+    
+    all_metrics = train_model(
+        model, train_loader, train_loader_for_eval, val_loader, optimizer, scheduler,
+        config['misc']['device'],
+        config['misc']['exp_name'],
+        checkpoint_path,
+        num_epochs=config['training']['num_epochs'],
+        
+    )
+    return all_metrics, checkpoint_path
 
-    # Check for different learning rate setups in the config
-    if 'learning_rate_groups' in config['training']:
-        # Separate learning rates for different parameter groups
-        pretrained_lr = config['training']['learning_rate_groups']['pretrained_lr']
-        new_lr = config['training']['learning_rate_groups']['new_lr']
-
-        param_groups = [
-            {'params': model.pretrained_parameters, 'lr': pretrained_lr},
-            {'params': model.non_pretrained_parameters, 'lr': new_lr}
-        ]
-        optimizer = torch.optim.Adam(param_groups, weight_decay=config['training']['weight_decay'])
-
-    else:
-        # Single learning rate for all parameters
-        optimizer = torch.optim.Adam(model.parameters(), lr=config['training']['learning_rate'],
-                                     weight_decay=config['training']['weight_decay'])
-
-    # Initialize loss function
-    criterion = get_loss_function(config)
-
-    # Start training and evaluation for the specified number of epochs
-    num_epochs = config['training']['num_epochs']
-
-    for epoch in range(num_epochs):
-        train_loss = train(model, train_loader, optimizer, criterion, device)
-        logger.info(f"Epoch {epoch+1}/{num_epochs}, Train loss: {train_loss}")
-
-        val_loss = evaluate(model, val_loader, criterion, device)
-        logger.info(f"Epoch {epoch+1}/{num_epochs}, Val loss: {val_loss}")
-
-    # Save the trained model
-    output_dir = os.path.join(config['model']['output_dir'], config['experiment_name'])
-    os.makedirs(output_dir, exist_ok=True)
-    torch.save(model.state_dict(), f"{output_dir}/final_model_weights.pth")
-    logger.info(f"Model saved at {output_dir}/final_model_weights.pth")
-
-
-    # Generate Aggregated Probability Matrices
-    mat1, mat2 = create_aggregated_probability_matrix(model, val_loader, num_classes=5, device=device)
-
-    # Save visualizations
-    visualize_confusion_matrix(mat1, "rotation", output_dir)
-    visualize_confusion_matrix(mat2, "translation", output_dir)
-
-    logger.info("Aggregated probability matrices and visualizations saved.")
+  
 
 
 def multi_dataset_test():
@@ -241,7 +275,7 @@ def multi_dataset_test():
 
     else:
         # Single learning rate for all parameters
-        optimizer = torch.optim.Adam(model.parameters(), lr=config['training']['learning_rate'],
+        optimizer = torch.optim.AdamW(model.parameters(), lr=config['training']['learning_rate'],
                                      weight_decay=config['training']['weight_decay'])
 
     # Initialize loss function

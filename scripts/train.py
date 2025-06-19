@@ -1,245 +1,200 @@
-import sys
 import os
+import wandb
+import numpy as np
+from collections import defaultdict
 
-# Add the project root to the Python path before importing any modules
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-import argparse
-import json
 import torch
 import torch.optim as optim
 import torch.nn as nn
 from torchvision import transforms
-from torch.utils.data import DataLoader
-from models.alexNetClassifier import AlexNetSLAMClassifier
 import torch.nn.functional as F
-import wandb
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from data.kitti_dataset import KITTIDataset
 
-
-# def train(model, iterator, optimizer, criterion, device):
-#     epoch_loss = 0.0
-#     model.train()
-
-#     for batch in iterator:
-#         images = batch['images'].to(device)
-#         labels1, labels2 = batch['rpe'][:, 0], batch['rpe'][:, 1]
-
-#         labels1, labels2 = labels1.to(device), labels2.to(device)
-
-
-#         # One-hot encode the labels
-#         labels1_one_hot = F.one_hot(labels1, num_classes=5).float()
-#         labels2_one_hot = F.one_hot(labels2, num_classes=5).float()
-
-
-#         # Reset gradients
-#         optimizer.zero_grad()
-
-#         # Forward pass
-#         outputs1, outputs2 = model(images)
-        
-#         # Compute loss
-#         loss1 = criterion(outputs1, labels1_one_hot)
-#         loss2 = criterion(outputs2, labels2_one_hot)
-#         loss = loss1 + loss2
-
-#         # Backward pass
-#         loss.backward()
-
-#         # Update model params
-#         optimizer.step()
-
-#         # Accumulate model params
-#         epoch_loss += loss.item() * images.size(0)
-
-#     return epoch_loss / len(iterator)
-
-def train(model, iterator, optimizer, criterion, device, num_classes):
-    epoch_loss = 0.0
-    model.train()
-
-    for batch in iterator:
+@torch.no_grad()
+def eval_model(
+    model, 
+    loader, 
+    num_classes_rot, 
+    num_classes_trans,
+    criterion, 
+    device
+    ):
+    
+    model.eval()
+    loss = 0
+    loss_rot = 0
+    loss_trans = 0
+    n = 0
+    
+    for batch in loader:
         (features, images), labels = batch
         features = features.to(device)
         images = images.to(device)
         labels = labels.long().to(device)
+        
+        labels_rot = labels[:, 0]
+        labels_trans = labels[:, 1]
+        
+        # one hot encoding
+        labels_rot = F.one_hot(labels_rot, num_classes=num_classes_rot).float()
+        labels_trans = F.one_hot(labels_trans, num_classes=num_classes_trans).float()
+        
+        logits_rot, logits_trans = model(features, images)
+        batch_loss_rot = criterion(logits_rot, labels_rot)
+        batch_loss_trans = criterion(logits_trans, labels_trans)
+        
+        loss_rot += batch_loss_rot.item() * labels.shape[0]
+        loss_trans += batch_loss_trans.item() * labels.shape[0]
 
-        # One-hot encode the labels (rot, trans)
-        labels1 = labels[:, 0]
-        labels2 = labels[:, 1]
-        labels1_one_hot = F.one_hot(labels1, num_classes=num_classes).float()
-        labels2_one_hot = F.one_hot(labels2, num_classes=num_classes).float()
-
-        optimizer.zero_grad()
-
-        outputs1, outputs2 = model((features, images))
-
-        loss1 = criterion(outputs1, labels1_one_hot)
-        loss2 = criterion(outputs2, labels2_one_hot)
-        loss = loss1 + loss2
-
-        loss.backward()
-        optimizer.step()
-
-        epoch_loss += loss.item() * labels.size(0)
-
-    return epoch_loss / len(iterator.dataset)
-
-# def evaluate(model, iterator, criterion, device):
-#     epoch_loss = 0.0
-#     model.eval()
-
-#     with torch.no_grad():
-#         for batch in iterator:
-#             images = batch['images'].to(device)
-#             labels1, labels2 = batch['rpe'][:, 0], batch['rpe'][:, 1]
-#             labels1, labels2 = labels1.to(device), labels2.to(device)
-
-#             # One-hot encode the labels
-#             labels1_one_hot = F.one_hot(labels1, num_classes=3).float()
-#             labels2_one_hot = F.one_hot(labels2, num_classes=5).float()
-
-#             output1, output2 = model(images)
-
-#             loss1, loss2 = criterion(output1, labels1_one_hot), criterion(output2, labels2_one_hot)
-#             loss = loss1 + loss2
-
-#             epoch_loss += loss.item() * images.size(0)
-
-#     return epoch_loss / len(iterator)
+        n += labels.shape[0]
+        
+    avg_loss_rot = loss_rot / n
+    avg_loss_trans = loss_trans / n
+    avg_loss = avg_loss_rot + avg_loss_trans
+    
+    return {
+        "loss": avg_loss,
+        "loss_rot": avg_loss_rot,
+        "loss_trans": avg_loss_trans
+    }
 
 
-def evaluate(model, iterator, criterion, device, num_classes):
-    epoch_loss = 0.0
-    model.eval()
-
-    with torch.no_grad():
-        for batch in iterator:
+def train_model(
+    model,
+    train_loader,
+    train_loader_for_eval,
+    val_loader,
+    optimizer,
+    criterion,
+    num_classes_rot,
+    num_classes_trans,
+    scheduler,
+    device,
+    exp_name,
+    checkpoint_path,
+    num_epochs=25,
+    eval_period=1,
+    print_period=10,
+    save_model_period=5,
+    save_statistics_period=1,
+    verbose=True,
+    wandb_run=None,
+):
+    """
+    Train a SLAM performance model and evaluate it periodically.
+    
+    Args:
+        model: The model to train
+        train_loader: DataLoader for training data
+        train_loader_for_eval: DataLoader for evaluating on training data
+        val_loader: DataLoader for validation data
+        optimizer: Optimizer for training
+        scheduler: Learning rate scheduler
+        device: Device to train on ('cpu', 'cuda', etc.)
+        exp_name: Experiment name for saving files
+        checkpoint_path: Path to save checkpoints
+        num_epochs: Number of epochs to train
+        eval_period: Frequency of evaluation (in epochs)
+        print_period: Frequency of printing status (in iterations)
+        save_model_period: Frequency of saving model checkpoints (in epochs)
+        save_statistics_period: Frequency of saving statistics (in epochs)
+        verbose: Whether to print verbose output
+        
+    Returns:
+        dict: Dictionary containing all metrics during training
+    """
+    
+    os.makedirs(checkpoint_path, exist_ok=True)
+    
+    # Initialize metrics tracking
+    all_metrics = defaultdict(lambda: [])
+    all_metrics["train"] = defaultdict(lambda: [])
+    all_metrics["val"] = defaultdict(lambda: [])
+        
+    # count parameters
+    num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    all_metrics["num_params"] = num_params
+    
+    if wandb_run is not None:
+        wandb_run.summary["num_params"] = num_params
+    
+    # Initial evaluation
+    if verbose:
+        print("Performing initial evaluation")
+        
+    train_statistics = eval_model(model, 
+                                  train_loader_for_eval, 
+                                  num_classes_rot, 
+                                  num_classes_trans, 
+                                  criterion,
+                                  device)
+    for k, v in train_statistics.items():
+        all_metrics["train"][k].append(v)
+    val_statistics = eval_model(model, 
+                                val_loader, 
+                                num_classes_rot, 
+                                num_classes_trans, 
+                                criterion,
+                                device)
+    for k, v in val_statistics.items():
+        all_metrics["val"][k].append(v)
+    
+    all_metrics["epoch"].append(0)
+    
+    # save initial model
+    state = {
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+    }
+    torch.save(state, f"{checkpoint_path}/{exp_name}_state_{0}_loss={val_statistics['loss']}.pth")
+    
+    # Log initial metrics to wandb
+    if wandb_run is not None:
+        metrics_to_log = {
+            "epoch": 0,
+            "train_loss": train_statistics["loss"],
+            "train_loss_rot": train_statistics["loss_rot"],
+            "train_loss_trans": train_statistics["loss_trans"],
+            "val_loss": val_statistics["loss"],
+            "val_loss_rot": val_statistics["loss_rot"],
+            "val_loss_trans": val_statistics["loss_trans"],
+        }
+        wandb_run.log(metrics_to_log)
+        
+    for epoch in range(1, num_epochs + 1):
+        for i, batch in enumerate(train_loader):
             (features, images), labels = batch
             features = features.to(device)
             images = images.to(device)
             labels = labels.long().to(device)
-
-            labels1 = labels[:, 0]
-            labels2 = labels[:, 1]
-            labels1_one_hot = F.one_hot(labels1, num_classes=num_classes).float()
-            labels2_one_hot = F.one_hot(labels2, num_classes=num_classes).float()
-
-            outputs1, outputs2 = model((features, images))
-
-            loss1 = criterion(outputs1, labels1_one_hot)
-            loss2 = criterion(outputs2, labels2_one_hot)
-            loss = loss1 + loss2
-
-            epoch_loss += loss.item() * labels.size(0)
-
-    return epoch_loss / len(iterator.dataset)
-
-
-# if __name__ == "__main__":
-#     args = parse_args()
-#     config = load_config(args.config)
-    
-#     # Initialize wandb
-#     #wandb.init(project="ood-slam", entity="udem-mila", mode="offline")
-
-#     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-#     print(f"Using device: {device}")
-
-#     train_transforms = transforms.Compose([
-#         transforms.Resize((224, 224)),
-#         transforms.ToTensor(),
-#         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-#     ])
-    
-#     val_transforms = transforms.Compose([
-#         transforms.Resize((224, 224)),
-#         transforms.ToTensor(),
-#         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-#     ])
-
-#     # train_dir = config['dataset']['train_data_dir']
-#     # val_dir = config['dataset']['val_data_dir']
-
-#     images_dir = config['dataset']['images_dir'] #/media/adam/T9/ood_slam_data/datasets/kitti/odometry_gray/sequences/
-#     errors_dir = config['dataset']['errors_dir'] #/media/adam/T9/slam_performance_model/data/errors/
-    
-#     # images_dir = "/media/adam/T9/ood_slam_data/datasets/kitti/odometry_gray/sequences"
-#     # errors_dir = "/media/adam/T9/slam_performance_model/data/errors/discretized"
-
-#     batch_size = config['dataset']['batch_size']
-#     sequence_length = config['dataset']['sequence_length']
-#     learning_rate = config['training']['learning_rate']
-#     num_epochs = config['training']['num_epochs']
-
-
-#     # Combine all the training sequences (00–08)
-#     train_sequence_dirs = [f'{images_dir}/{i:02d}' for i in range(9)]
-#     train_label_files = [f'{errors_dir}/{i:02d}.csv' for i in range(9)]
-
-#     # Initialize the dataset
-#     train_dataset = KITTIDataset(sequence_dirs=train_sequence_dirs, label_files=train_label_files, sequence_length=1, transform=train_transforms)
-
-#     # Create a DataLoader for the dataset
-#     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=4)
-
-#     val_sequence_dirs = [f'{images_dir}/{i:02d}' for i in range(9, 11)]
-#     val_label_files = [f'{errors_dir}/{i:02d}.csv' for i in range(9, 11)]
-#     val_dataset = KITTIDataset(sequence_dirs=val_sequence_dirs, label_files=val_label_files, sequence_length=1, transform=val_transforms)
-
-#     val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False, num_workers=4)
-
-#     model = AlexNetSLAMClassifier(config['model']['weights_path'], num_classes=5)
-
-#     output_dir = config['model']['output_dir']
-    
-#     criterion = EMDSquaredLoss()
-
-#     pretrained_classifier_lr = 1e-4
-#     pretrained_conv_layer_lr = 1e-5
-#     new_lr = 1e-3
-
-#     params = [
-#         {'params': model.features[0].parameters(), 'lr': new_lr},
-#         {'params': model.features[10].parameters(), 'lr': pretrained_conv_layer_lr},
-#         {'params': model.classifier.parameters(), 'lr': pretrained_classifier_lr},
-#         {'params': model.fc1.parameters(), 'lr': new_lr},
-#         {'params': model.fc2.parameters(), 'lr': new_lr}
-#     ]
-#     optimizer = optim.Adam(params)
-
-#     print(f'The model has {count_parameters(model):,} trainable parameters')
-    
-
-#     model = model.to(device)
-
-#     # Log hyperparameters
-#     # wandb.config.update({
-#     #     "learning_rate": learning_rate,
-#     #     "batch_size": batch_size,
-#     #     "num_epochs": num_epochs,
-#     #     "sequence_length": sequence_length
-#     # })
-
-#     for epoch in range(num_epochs):
-#         train_loss = train(model, train_loader, optimizer, criterion, device)
-#         print(f"Epoch {epoch+1}/{num_epochs}, Train loss: {train_loss}")
-#         #wandb.log({"train_loss": train_loss, "epoch": epoch + 1})
-
-#         val_loss = evaluate(model, val_loader, criterion, device)
-#         print(f"Epoch {epoch + 1}/{num_epochs}, Val loss: {val_loss}")
-#         #wandb.log({"val_loss": val_loss, "epoch": epoch + 1})
-
-#     output_dir = config['model']['output_dir']
-#     #torch.save(model.state_dict(), f"{output_dir}/fine_tuned_alexnet_weights.pth")
-
-
-
-#     mat1, mat2 = create_aggregated_probability_matrix(model, val_loader, 5)
-
-#     visualize_confusion_matrix(mat1, "rotation", output_dir)
-#     visualize_confusion_matrix(mat2, "translation", output_dir)
+            
+            labels_rot = labels[:, 0]
+            labels_trans = labels[:, 1]
+            
+            # one hot encoding
+            labels_rot = F.one_hot(labels_rot, num_classes=num_classes_rot).float()
+            labels_trans = F.one_hot(labels_trans, num_classes=num_classes_trans).float()
+            
+            optimizer.zero_grad(set_to_none=True)
+            model.train()                
+            
+            logits_rot, logits_trans = model(features, images)
+            loss_rot = criterion(logits_rot, labels_rot)
+            loss_trans = criterion(logits_trans, labels_trans)
+            
+            loss = loss_rot + loss_trans
+            
+            loss.backward()
+            optimizer.step() 
+            
+            
+            # Print training status
+            if verbose and i % print_period == 0:
+                print(f"Epoch [{epoch}/{num_epochs}], Step [{i}/{len(train_loader)}], "
+                      f"Loss: {loss.item():.4f}, Loss Rot: {loss_rot.item():.4f}, Loss Trans: {loss_trans.item():.4f}")
+                
+        if scheduler is not None:
+            scheduler.step()
+        
+        # Evaluate on training data 
+            
+        

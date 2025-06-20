@@ -20,10 +20,14 @@ def eval_model(
     ):
     
     model.eval()
-    loss = 0
     loss_rot = 0
     loss_trans = 0
     n = 0
+    
+    all_preds_rot = []
+    all_preds_trans = []
+    all_labels_rot = []
+    all_labels_trans = []
     
     for batch in loader:
         (features, images), labels = batch
@@ -35,17 +39,37 @@ def eval_model(
         labels_trans = labels[:, 1]
         
         # one hot encoding
-        labels_rot = F.one_hot(labels_rot, num_classes=num_classes_rot).float()
-        labels_trans = F.one_hot(labels_trans, num_classes=num_classes_trans).float()
+        labels_rot_oh = F.one_hot(labels_rot, num_classes=num_classes_rot).float()
+        labels_trans_oh = F.one_hot(labels_trans, num_classes=num_classes_trans).float()
         
         logits_rot, logits_trans = model(features, images)
-        batch_loss_rot = criterion(logits_rot, labels_rot)
-        batch_loss_trans = criterion(logits_trans, labels_trans)
+        batch_loss_rot = criterion(logits_rot, labels_rot_oh)
+        batch_loss_trans = criterion(logits_trans, labels_trans_oh)
         
+        # accumulate loss
         loss_rot += batch_loss_rot.item() * labels.shape[0]
         loss_trans += batch_loss_trans.item() * labels.shape[0]
+        
+        # get predictions
+        preds_rot = torch.argmax(logits_rot, dim=1)
+        preds_trans = torch.argmax(logits_trans, dim=1)
+        
+        all_preds_rot.append(preds_rot.cpu())
+        all_preds_trans.append(preds_trans.cpu())
+        all_labels_rot.append(labels_rot.cpu())
+        all_labels_trans.append(labels_trans.cpu())
 
         n += labels.shape[0]
+        
+    # Concatenate all predictions and labels
+    all_preds_rot = torch.cat(all_preds_rot)
+    all_preds_trans = torch.cat(all_preds_trans)
+    all_labels_rot = torch.cat(all_labels_rot)
+    all_labels_trans = torch.cat(all_labels_trans)
+    
+    # Calculate accuracy
+    acc_rot = (all_preds_rot == all_labels_rot).float().mean().item() 
+    acc_trans = (all_preds_trans == all_labels_trans).float().mean().item()
         
     avg_loss_rot = loss_rot / n
     avg_loss_trans = loss_trans / n
@@ -54,7 +78,9 @@ def eval_model(
     return {
         "loss": avg_loss,
         "loss_rot": avg_loss_rot,
-        "loss_trans": avg_loss_trans
+        "loss_trans": avg_loss_trans,
+        "acc_rot": acc_rot,
+        "acc_trans": acc_trans
     }
 
 
@@ -127,14 +153,17 @@ def train_model(
                                   num_classes_trans, 
                                   criterion,
                                   device)
-    for k, v in train_statistics.items():
-        all_metrics["train"][k].append(v)
     val_statistics = eval_model(model, 
                                 val_loader, 
                                 num_classes_rot, 
                                 num_classes_trans, 
                                 criterion,
                                 device)
+    
+    
+    for k, v in train_statistics.items():
+        all_metrics["train"][k].append(v)
+        
     for k, v in val_statistics.items():
         all_metrics["val"][k].append(v)
     
@@ -154,9 +183,13 @@ def train_model(
             "train_loss": train_statistics["loss"],
             "train_loss_rot": train_statistics["loss_rot"],
             "train_loss_trans": train_statistics["loss_trans"],
+            "train_acc_rot": train_statistics["acc_rot"],
+            "train_acc_trans": train_statistics["acc_trans"],
             "val_loss": val_statistics["loss"],
             "val_loss_rot": val_statistics["loss_rot"],
             "val_loss_trans": val_statistics["loss_trans"],
+            "val_acc_rot": val_statistics["acc_rot"],
+            "val_acc_trans": val_statistics["acc_trans"]
         }
         wandb_run.log(metrics_to_log)
         
@@ -195,6 +228,88 @@ def train_model(
         if scheduler is not None:
             scheduler.step()
         
-        # Evaluate on training data 
+        if epoch % eval_period == 0 or epoch == num_epochs:
+            if verbose:
+                print(f"Evaluating model at epoch {epoch}")
+                
+            train_statistics = eval_model(model, 
+                                          train_loader_for_eval, 
+                                          num_classes_rot,
+                                          num_classes_trans,
+                                          criterion,
+                                          device)
+            val_statistics = eval_model(model, 
+                                        val_loader, 
+                                        num_classes_rot,
+                                        num_classes_trans,
+                                        criterion,
+                                        device)
             
+            for k, v in train_statistics.items():
+                all_metrics["train"][k].append(v)
         
+            for k, v in val_statistics.items():
+                all_metrics["val"][k].append(v)
+            
+            all_metrics["epoch"].append(epoch)            
+        
+            if wandb_run is not None:
+                metrics_to_log = {
+                    "epoch": epoch,
+                    "train_loss": train_statistics["loss"],
+                    "train_loss_rot": train_statistics["loss_rot"],
+                    "train_loss_trans": train_statistics["loss_trans"],
+                    "train_acc_rot": train_statistics["acc_rot"],
+                    "train_acc_trans": train_statistics["acc_trans"],
+                    "val_loss": val_statistics["loss"],
+                    "val_loss_rot": val_statistics["loss_rot"],
+                    "val_loss_trans": val_statistics["loss_trans"],
+                    "val_acc_rot": val_statistics["acc_rot"],
+                    "val_acc_trans": val_statistics["acc_trans"]
+                }
+                wandb_run.log(metrics_to_log)
+                
+    # Final evaluation
+    train_statistics = eval_model(model, 
+                                train_loader_for_eval, 
+                                num_classes_rot,
+                                num_classes_trans,
+                                criterion,
+                                device)
+    val_statistics = eval_model(model, 
+                                val_loader, 
+                                num_classes_rot,
+                                num_classes_trans,
+                                criterion,
+                                device)
+    
+    for k, v in train_statistics.items():
+        all_metrics["train"][k].append(v)
+
+    for k, v in val_statistics.items():
+        all_metrics["val"][k].append(v)
+    
+    all_metrics["epoch"].append(num_epochs)            
+
+    if wandb_run is not None:
+        metrics_to_log = {
+            "epoch": num_epochs,
+            "train_loss": train_statistics["loss"],
+            "train_loss_rot": train_statistics["loss_rot"],
+            "train_loss_trans": train_statistics["loss_trans"],
+            "train_acc_rot": train_statistics["acc_rot"],
+            "train_acc_trans": train_statistics["acc_trans"],
+            "val_loss": val_statistics["loss"],
+            "val_loss_rot": val_statistics["loss_rot"],
+            "val_loss_trans": val_statistics["loss_trans"],
+            "val_acc_rot": val_statistics["acc_rot"],
+            "val_acc_trans": val_statistics["acc_trans"]
+        }
+        wandb_run.log(metrics_to_log)
+        
+    # Save final model
+    state = {
+        "model_state_dict": model.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+    }
+    torch.save(state, f"{checkpoint_path}/{exp_name}_state_final_loss={val_statistics['loss']}.pth")

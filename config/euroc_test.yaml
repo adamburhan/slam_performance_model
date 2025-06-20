@@ -1,5 +1,3 @@
-experiment_name: 'euroc_test_experiment'
-
 # Model parameters
 model:
   architecture: 'alexnet_test' # Model architecture: alexnet, resnet18, resnet34, etc.
@@ -20,23 +18,27 @@ dataset:
 
   dataset_dict:
     train:
-      euroc: [
-        "MH_01_easy", 
-        "MH_03_medium",
-        "MH_04_difficult",
-        "MH_05_difficult",
-        "V1_01_easy",
-        "V1_03_difficult",
-        "V2_01_easy",
-        "V2_02_medium",
-        "V2_03_difficult"
-      ]
-      
+      {
+        euroc: [
+          "MH_01_easy", 
+          "MH_03_medium",
+          "MH_04_difficult",
+          "MH_05_difficult",
+          "V1_01_easy",
+          "V1_03_difficult",
+          "V2_01_easy",
+          "V2_02_medium",
+          "V2_03_difficult"
+        ]
+      }
+
     val:
-      euroc: [
-        "MH_02_easy",
-        "V1_02_medium",
-      ]
+      {
+        euroc: [
+          "MH_02_easy",
+          "V1_02_medium",
+        ]
+      }
                                                                                          
 
 # Data augmentation and transformation parameters
@@ -60,3 +62,10 @@ logging:
   wandb_project: 'ood-slam'           
   wandb_entity: 'udem-mila'         
   log_interval: 10                      
+
+misc:
+  use_wandb: true
+  wandb_project: 'ood-slam'
+  wandb_entity: 'udem-mila'
+  output_dir: '/tmp_log/'
+  exp_name: 'euroc_test_experiment'

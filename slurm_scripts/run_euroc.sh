@@ -15,14 +15,21 @@ rsync -avz $SCRATCH/datasets/ood_slam.tar.gz $SLURM_TMPDIR
 
 tar xzf $SLURM_TMPDIR/ood_slam.tar.gz -C $SLURM_TMPDIR/
 
+mkdir -p $SLURM_TMPDIR/tmp_log
+mkdir -p $SLURM_TMPDIR/wandb
+
 # 3. Executing the code with singularity
 singularity exec --nv \
+        --env WANDB_MODE="offline" \
+        --env WANDB_API_KEY="65f9f067d5b47932d6cfaba52c346d7b3e435bf9" \
         -H $HOME/projects/ood_slam/slam_performance_model:/home \
         -B $SLURM_TMPDIR:/dataset/ \
-        -B $SLURM_TMPDIR:/tmp_log/ \
-        -B $SCRATCH:/final_log \
+        -B $SLURM_TMPDIR/tmp_log:/tmp_log/ \
+        -B $SLURM_TMPDIR/wandb:/wandb \
+        # -B $SCRATCH:/final_log \
         $SLURM_TMPDIR/pytorch_final.sif \
         python /home/main.py --config /home/configs/euroc_test.yaml
 
 # 4. Copy what needs to be saved on $SCRATCH
-rsync -avz $SLURM_TMPDIR/final_log/ $SCRATCH
+rsync -avz $SLURM_TMPDIR/tmp_log/ $SCRATCH/logs
+rsync -avz $SLURM_TMPDIR/wandb/ $SCRATCH/wandb

@@ -20,8 +20,8 @@ import tqdm
 import wandb
 
 from data.datasets import MultiDataset, get_datasets
-from scripts.train import train as train_model
-from scripts.train import evaluate
+from scripts.train import train_model
+#from scripts.train import evaluate
 from utils.logging import get_logger
 from torchvision import transforms
 from utils.losses import get_loss_function, EMDSquaredLoss
@@ -101,7 +101,7 @@ class DummyScheduler:
     
 def train(config):
     # Seed the experiment, for repeatability
-    seed_experiment(config['seed'])
+    seed_experiment(config['misc']['seed'])
     
     # Initialize wandb
     if config['misc']['use_wandb']:
@@ -110,13 +110,13 @@ def train(config):
             entity=config['misc']['wandb_entity'],
             config=config,
             name=config['misc']['exp_name'],
-            dir=config['misc']['output_dir']
+            dir=config['misc']['log_dir']
         )
     else:
         run = None
         
     # Create a directory to save the experiment results
-    base_path = os.path.join(config['log_dir'], config['exp_id'])
+    base_path = os.path.join(config['misc']['log_dir'], config['misc']['exp_name'])
     checkpoint_path = base_path
     i = 0
     while os.path.exists(checkpoint_path):
@@ -129,28 +129,30 @@ def train(config):
     
     train_loader = DataLoader(
         train_dataset,
-        batch_size=min(config['dataset']['train_batch_size'], len(train_dataset)),
+        batch_size=min(config['dataset']['batch_size'], len(train_dataset)),
         shuffle=True,
         num_workers=config['dataset']['num_workers']
     )
     
     train_loader_for_eval = DataLoader(
         train_dataset,
-        batch_size=min(config['dataset']['eval_batch_size'], len(train_dataset)),
+        batch_size=min(config['dataset']['batch_size'], len(train_dataset)),
         shuffle=False,
         num_workers=config['dataset']['num_workers']
     )
     
     val_loader = DataLoader(
         val_dataset,
-        batch_size=min(config['dataset']['eval_batch_size'], len(val_dataset)),
+        batch_size=min(config['dataset']['batch_size'], len(val_dataset)),
         shuffle=False,
         num_workers=config['dataset']['num_workers']
     )
     
     # Model
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"Using device: {device}")
     model = get_model(config)
-    model.to(config['misc']['device'])
+    model.to(device)
     
     # Optimizer
     optimizer = config['optimization']['optimizer']
@@ -181,7 +183,7 @@ def train(config):
         num_classes_rot=config['model']['num_classes_rot'],
         num_classes_trans=config['model']['num_classes_trans'],
         scheduler=scheduler,
-        device=config['misc']['device'],
+        device=device,
         exp_name=config['misc']['exp_name'],
         checkpoint_path=checkpoint_path,
         num_epochs=config['training']['num_epochs'],

@@ -26,7 +26,6 @@ singularity exec --nv \
         -B $SLURM_TMPDIR:/dataset/ \
         -B $SLURM_TMPDIR/tmp_log:/tmp_log/ \
         -B $SLURM_TMPDIR/wandb:/wandb \
-        # -B $SCRATCH:/final_log \
         $SLURM_TMPDIR/pytorch_final.sif \
         python /home/main.py --config /home/configs/euroc_test.yaml
 

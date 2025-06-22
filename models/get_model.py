@@ -5,7 +5,7 @@ import torch
 def get_model(config):
     architecture = config['model']['architecture']
     weights_path = config['model'].get('weights_path', None)
-    num_classes = config['model']['num_outputs'][1]
+    num_classes = config['model']['num_classes_rot']
     # input_channels = config['model']['input_channels'] * config['dataset']['sequence_length']
     feature_dim = config['dataset']['feature_dim']
     context_len = config['dataset']['context_len']

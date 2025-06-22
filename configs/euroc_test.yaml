@@ -4,7 +4,8 @@ model:
   pretrained: true        
   weights_path: '/dataset/pretrained_weights/alexnet_weights.pth'   
   input_channels: 3       # Number of input channels (e.g., 3 for RGB, 6 for stereo)
-  num_outputs: [5, 5]     # Number of outputs: e.g., 3 for rotation, 5 for translation
+  num_classes_rot: 5
+  num_classes_trans: 5
   output_dir: '/tmp_log/'          
 
 # Dataset parameters
@@ -47,25 +48,28 @@ data_transforms:
   mean: [0.485, 0.456, 0.406]          
   std: [0.229, 0.224, 0.225]            
 
+optimization:
+  optimizer: 'adamw'
+  lr: 0.001
+  weight_decay: 0.01
+  momentum: 0.9
+
 # Training Parameters
 training:
   task: 'classification'                
-  loss_function: 'EMDSquaredLoss'       
-  optimizer: 'Adam'                     
-  learning_rate: 0.001
-  weight_decay: 0.01                
-  num_epochs: 25                       
-
-# Logging Parameters
-logging:
-  use_wandb: false                      
-  wandb_project: 'ood-slam'           
-  wandb_entity: 'udem-mila'         
-  log_interval: 10                      
+  loss_function: 'CrossEntropyLoss'              
+  num_epochs: 25              
+  eval_period: 1
+  print_period: 10
+  save_model_period: 5
+  save_statistics_period: 5         
 
 misc:
+  seed: 42
   use_wandb: true
   wandb_project: 'ood-slam'
   wandb_entity: 'udem-mila'
-  output_dir: '/tmp_log/'
+  log_dir: '/tmp_log/'
+  exp_id: 0
   exp_name: 'euroc_test_experiment'
+  verbose: true

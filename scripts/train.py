@@ -9,6 +9,32 @@ import torch.nn as nn
 from torchvision import transforms
 import torch.nn.functional as F
 
+from models.get_model import get_model
+from utils.losses import get_loss_function
+
+def evaluate_trained_model(model_path, val_loader, config, device):
+    """
+    Evaluate a trained model on the validation dataset.
+    """
+    model = get_model(config)
+    checkpoint = torch.load(model_path, map_location=device)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    model.to(device)
+    
+    criterion = get_loss_function(config)
+    
+    # evaluate
+    metrics = eval_model(
+        model=model,
+        loader=val_loader,
+        num_classes_rot=config['model']['num_classes_rot'],
+        num_classes_trans=config['model']['num_classes_trans'],
+        criterion=criterion,
+        device=device
+    )
+
+    return metrics
+
 @torch.no_grad()
 def eval_model(
     model, 
@@ -42,7 +68,7 @@ def eval_model(
         labels_rot_oh = F.one_hot(labels_rot, num_classes=num_classes_rot).float()
         labels_trans_oh = F.one_hot(labels_trans, num_classes=num_classes_trans).float()
         
-        logits_rot, logits_trans = model(features, images)
+        logits_rot, logits_trans = model((features, images))
         batch_loss_rot = criterion(logits_rot, labels_rot_oh)
         batch_loss_trans = criterion(logits_trans, labels_trans_oh)
         
@@ -189,9 +215,14 @@ def train_model(
             "val_loss_rot": val_statistics["loss_rot"],
             "val_loss_trans": val_statistics["loss_trans"],
             "val_acc_rot": val_statistics["acc_rot"],
-            "val_acc_trans": val_statistics["acc_trans"]
+            "val_acc_trans": val_statistics["acc_trans"],
+            "learning_rate": scheduler.get_last_lr()[0] if hasattr(scheduler, 'get_last_lr') else optimizer.param_groups[0]['lr']
         }
         wandb_run.log(metrics_to_log)
+        
+    best_val_loss = float('inf')
+    patience_counter = 0
+    patience = 10
         
     for epoch in range(1, num_epochs + 1):
         for i, batch in enumerate(train_loader):
@@ -210,13 +241,14 @@ def train_model(
             optimizer.zero_grad(set_to_none=True)
             model.train()                
             
-            logits_rot, logits_trans = model(features, images)
+            logits_rot, logits_trans = model((features, images))
             loss_rot = criterion(logits_rot, labels_rot)
             loss_trans = criterion(logits_trans, labels_trans)
             
             loss = loss_rot + loss_trans
             
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step() 
             
             
@@ -265,10 +297,42 @@ def train_model(
                     "val_loss_rot": val_statistics["loss_rot"],
                     "val_loss_trans": val_statistics["loss_trans"],
                     "val_acc_rot": val_statistics["acc_rot"],
-                    "val_acc_trans": val_statistics["acc_trans"]
+                    "val_acc_trans": val_statistics["acc_trans"],
+                    "learning_rate": scheduler.get_last_lr()[0] if hasattr(scheduler, 'get_last_lr') else optimizer.param_groups[0]['lr']
                 }
                 wandb_run.log(metrics_to_log)
                 
+            if val_statistics["loss"] < best_val_loss:
+                best_val_loss = val_statistics["loss"]
+                patience_counter = 0
+                
+                # Save the best model
+                state = {
+                    "model_state_dict": model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                }
+                torch.save(state, f"{checkpoint_path}/{exp_name}_state_best_loss={best_val_loss}.pth")
+                
+                if verbose:
+                    print(f"New best model saved with loss: {best_val_loss:.4f}")
+            else:
+                patience_counter += 1
+                if patience_counter >= patience:
+                    if verbose:
+                        print(f"Early stopping triggered at epoch {epoch} with patience {patience}.")
+                    break
+            
+            if epoch % save_model_period == 0:
+                # Save model checkpoint
+                state = {
+                    "model_state_dict": model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                }
+                torch.save(state, f"{checkpoint_path}/{exp_name}_state_epoch={epoch}_loss={val_statistics['loss']}.pth")
+                
+                if verbose:
+                    print(f"Model checkpoint saved at epoch {epoch} with loss: {val_statistics['loss']:.4f}")
+            
     # Final evaluation
     train_statistics = eval_model(model, 
                                 train_loader_for_eval, 
@@ -303,7 +367,8 @@ def train_model(
             "val_loss_rot": val_statistics["loss_rot"],
             "val_loss_trans": val_statistics["loss_trans"],
             "val_acc_rot": val_statistics["acc_rot"],
-            "val_acc_trans": val_statistics["acc_trans"]
+            "val_acc_trans": val_statistics["acc_trans"],
+            "learning_rate": scheduler.get_last_lr()[0] if hasattr(scheduler, 'get_last_lr') else optimizer.param_groups[0]['lr']
         }
         wandb_run.log(metrics_to_log)
         

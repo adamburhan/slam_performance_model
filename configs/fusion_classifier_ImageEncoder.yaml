@@ -1,6 +1,7 @@
 # Model parameters
 model:
-  architecture: 'alexnet_test' # Model architecture: alexnet, resnet18, resnet34, etc.
+  architecture: 'fusion_classifier' # Model architecture: alexnet, resnet18, resnet34, etc.
+  img_encoder: 'ImageEncoder'
   pretrained: true        
   weights_path: '/dataset/pretrained_weights/alexnet_weights.pth'   
   input_channels: 3       # Number of input channels (e.g., 3 for RGB, 6 for stereo)
@@ -71,5 +72,5 @@ misc:
   wandb_entity: 'udem-mila'
   log_dir: '/tmp_log/'
   exp_id: 0
-  exp_name: 'euroc_test_experiment'
+  exp_name: 'fusion_classifier_ImageEncoder_experiment'
   verbose: true

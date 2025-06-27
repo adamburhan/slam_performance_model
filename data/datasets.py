@@ -79,8 +79,8 @@ class MultiDataset(Dataset):
     def _load_sequence(self, dataset_name, seq_name, seq_path):
         """"Load and process a single sequence"""
         # load data files
-        features_path = os.path.join(seq_path, "vo_features.csv")
-        rpe_path = os.path.join(seq_path, "rpe_labels_binned.csv")
+        features_path = os.path.join(seq_path, "mono_train/vo_features.csv")
+        rpe_path = os.path.join(seq_path, "mono_train/rpe_labels_binned.csv")
         image_dir = os.path.join(seq_path, "images_cam0")
         
         if not os.path.exists(features_path):

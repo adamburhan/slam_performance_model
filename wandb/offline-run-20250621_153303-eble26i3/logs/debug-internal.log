@@ -1,0 +1,15 @@
+{"time":"2025-06-21T15:33:04.402011221-04:00","level":"INFO","msg":"stream: starting","core version":"0.20.1","symlink path":"/tmp_log/wandb/offline-run-20250621_153303-eble26i3/logs/debug-core.log"}
+{"time":"2025-06-21T15:33:04.614088464-04:00","level":"WARN","msg":"GraphQL client is nil, skipping feature loading"}
+{"time":"2025-06-21T15:33:04.61417051-04:00","level":"INFO","msg":"stream: created new stream","id":"eble26i3"}
+{"time":"2025-06-21T15:33:04.614184479-04:00","level":"INFO","msg":"stream: started","id":"eble26i3"}
+{"time":"2025-06-21T15:33:04.614195568-04:00","level":"INFO","msg":"writer: Do: started","stream_id":"eble26i3"}
+{"time":"2025-06-21T15:33:04.614352735-04:00","level":"INFO","msg":"handler: started","stream_id":"eble26i3"}
+{"time":"2025-06-21T15:33:04.614426453-04:00","level":"INFO","msg":"sender: started","stream_id":"eble26i3"}
+{"time":"2025-06-21T15:33:04.617714655-04:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-06-21T15:33:05.619706814-04:00","level":"INFO","msg":"stream: closing","id":"eble26i3"}
+{"time":"2025-06-21T15:33:05.619736856-04:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-06-21T15:33:05.619796018-04:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-06-21T15:33:05.619886132-04:00","level":"INFO","msg":"handler: closed","stream_id":"eble26i3"}
+{"time":"2025-06-21T15:33:05.619896305-04:00","level":"INFO","msg":"sender: closed","stream_id":"eble26i3"}
+{"time":"2025-06-21T15:33:05.619893134-04:00","level":"INFO","msg":"writer: Close: closed","stream_id":"eble26i3"}
+{"time":"2025-06-21T15:33:05.619932434-04:00","level":"INFO","msg":"stream: closed","id":"eble26i3"}

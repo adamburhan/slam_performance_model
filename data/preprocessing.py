@@ -148,35 +148,35 @@ def discretize_rpe(train_paths, test_paths, out_train_paths, out_test_paths, n_q
         
 if __name__ == "__main__":
     train_paths = [
-        Path("/media/adam/T91/ood_slam_data/datasets/euroc/MH_01_easy/rpe_labels.csv"),
-        Path("/media/adam/T91/ood_slam_data/datasets/euroc/MH_03_medium/rpe_labels.csv"),
-        Path("/media/adam/T91/ood_slam_data/datasets/euroc/MH_04_difficult/rpe_labels.csv"),
-        Path("/media/adam/T91/ood_slam_data/datasets/euroc/MH_05_difficult/rpe_labels.csv"),
-        Path("/media/adam/T91/ood_slam_data/datasets/euroc/V1_01_easy/rpe_labels.csv"),
-        Path("/media/adam/T91/ood_slam_data/datasets/euroc/V1_03_difficult/rpe_labels.csv"),
-        Path("/media/adam/T91/ood_slam_data/datasets/euroc/V2_02_medium/rpe_labels.csv"),
-        Path("/media/adam/T91/ood_slam_data/datasets/euroc/V2_01_easy/rpe_labels.csv"),
-        Path("/media/adam/T91/ood_slam_data/datasets/euroc/V2_03_difficult/rpe_labels.csv")
+        Path("/media/adam/T91/ood_slam_data/datasets/euroc/MH_01_easy/mono_train/rpe_labels.csv"),
+        Path("/media/adam/T91/ood_slam_data/datasets/euroc/MH_03_medium/mono_train/rpe_labels.csv"),
+        Path("/media/adam/T91/ood_slam_data/datasets/euroc/MH_04_difficult/mono_train/rpe_labels.csv"),
+        Path("/media/adam/T91/ood_slam_data/datasets/euroc/MH_05_difficult/mono_train/rpe_labels.csv"),
+        Path("/media/adam/T91/ood_slam_data/datasets/euroc/V1_01_easy/mono_train/rpe_labels.csv"),
+        Path("/media/adam/T91/ood_slam_data/datasets/euroc/V1_03_difficult/mono_train/rpe_labels.csv"),
+        Path("/media/adam/T91/ood_slam_data/datasets/euroc/V2_02_medium/mono_train/rpe_labels.csv"),
+        Path("/media/adam/T91/ood_slam_data/datasets/euroc/V2_01_easy/mono_train/rpe_labels.csv"),
+        Path("/media/adam/T91/ood_slam_data/datasets/euroc/V2_03_difficult/mono_train/rpe_labels.csv")
     ]
     test_paths = [
-        Path("/media/adam/T91/ood_slam_data/datasets/euroc/MH_02_easy/rpe_labels.csv"),
-        Path("/media/adam/T91/ood_slam_data/datasets/euroc/V1_02_medium/rpe_labels.csv")
+        Path("/media/adam/T91/ood_slam_data/datasets/euroc/MH_02_easy/mono_train/rpe_labels.csv"),
+        Path("/media/adam/T91/ood_slam_data/datasets/euroc/V1_02_medium/mono_train/rpe_labels.csv")
     ]
 
     out_train_paths = [
-        Path("/media/adam/T91/ood_slam_data/datasets/euroc/MH_01_easy/rpe_labels_binned.csv"),
-        Path("/media/adam/T91/ood_slam_data/datasets/euroc/MH_03_medium/rpe_labels_binned.csv"),
-        Path("/media/adam/T91/ood_slam_data/datasets/euroc/MH_04_difficult/rpe_labels_binned.csv"),
-        Path("/media/adam/T91/ood_slam_data/datasets/euroc/MH_05_difficult/rpe_labels_binned.csv"),
-        Path("/media/adam/T91/ood_slam_data/datasets/euroc/V1_01_easy/rpe_labels_binned.csv"),
-        Path("/media/adam/T91/ood_slam_data/datasets/euroc/V1_03_difficult/rpe_labels_binned.csv"),
-        Path("/media/adam/T91/ood_slam_data/datasets/euroc/V2_02_medium/rpe_labels_binned.csv"),
-        Path("/media/adam/T91/ood_slam_data/datasets/euroc/V2_01_easy/rpe_labels_binned.csv"),
-        Path("/media/adam/T91/ood_slam_data/datasets/euroc/V2_03_difficult/rpe_labels_binned.csv")
+        Path("/media/adam/T91/ood_slam_data/datasets/euroc/MH_01_easy/mono_train/rpe_labels_binned.csv"),
+        Path("/media/adam/T91/ood_slam_data/datasets/euroc/MH_03_medium/mono_train/rpe_labels_binned.csv"),
+        Path("/media/adam/T91/ood_slam_data/datasets/euroc/MH_04_difficult/mono_train/rpe_labels_binned.csv"),
+        Path("/media/adam/T91/ood_slam_data/datasets/euroc/MH_05_difficult/mono_train/rpe_labels_binned.csv"),
+        Path("/media/adam/T91/ood_slam_data/datasets/euroc/V1_01_easy/mono_train/rpe_labels_binned.csv"),
+        Path("/media/adam/T91/ood_slam_data/datasets/euroc/V1_03_difficult/mono_train/rpe_labels_binned.csv"),
+        Path("/media/adam/T91/ood_slam_data/datasets/euroc/V2_02_medium/mono_train/rpe_labels_binned.csv"),
+        Path("/media/adam/T91/ood_slam_data/datasets/euroc/V2_01_easy/mono_train/rpe_labels_binned.csv"),
+        Path("/media/adam/T91/ood_slam_data/datasets/euroc/V2_03_difficult/mono_train/rpe_labels_binned.csv")
     ]
     out_test_paths = [
-        Path("/media/adam/T91/ood_slam_data/datasets/euroc/MH_02_easy/rpe_labels_binned.csv"),
-        Path("/media/adam/T91/ood_slam_data/datasets/euroc/V1_02_medium/rpe_labels_binned.csv")
+        Path("/media/adam/T91/ood_slam_data/datasets/euroc/MH_02_easy/mono_train/rpe_labels_binned.csv"),
+        Path("/media/adam/T91/ood_slam_data/datasets/euroc/V1_02_medium/mono_train/rpe_labels_binned.csv")
     ]
 
     discretize_rpe(train_paths, test_paths, out_train_paths, out_test_paths, n_quantiles=5)

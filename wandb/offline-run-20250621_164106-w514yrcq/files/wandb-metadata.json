@@ -1,0 +1,81 @@
+{
+  "os": "Linux-5.15.0-101-generic-x86_64-with-glibc2.35",
+  "python": "CPython 3.10.14",
+  "startedAt": "2025-06-21T20:41:06.844812Z",
+  "args": [
+    "--config",
+    "/home/configs/euroc_test.yaml"
+  ],
+  "program": "/home/main.py",
+  "codePath": "main.py",
+  "root": "/tmp_log/",
+  "host": "cn-c033.server.mila.quebec",
+  "executable": "/opt/conda/bin/python",
+  "codePathLocal": "main.py",
+  "cpu_count": 64,
+  "cpu_count_logical": 64,
+  "gpu": "Quadro RTX 8000",
+  "gpu_count": 1,
+  "disk": {
+    "/": {
+      "total": "16777216",
+      "used": "12288"
+    }
+  },
+  "memory": {
+    "total": "404506832896"
+  },
+  "cpu": {
+    "count": 64,
+    "countLogical": 64
+  },
+  "gpu_nvidia": [
+    {
+      "name": "Quadro RTX 8000",
+      "memoryTotal": "48318382080",
+      "cudaCores": 4608,
+      "architecture": "Turing",
+      "uuid": "GPU-cb78a665-a1aa-d457-cc4b-9988abc808d5"
+    }
+  ],
+  "slurm": {
+    "cluster_name": "mila",
+    "conf": "/etc/slurm/slurm.conf",
+    "cpus_on_node": "4",
+    "cpus_per_task": "4",
+    "gpus_on_node": "1",
+    "gtids": "0",
+    "job_account": "mila",
+    "job_cpus_per_node": "4",
+    "job_end_time": "1750717708",
+    "job_gid": "1500001370",
+    "job_gpus": "0",
+    "job_id": "7037691",
+    "job_name": "run_euroc.sh",
+    "job_nodelist": "cn-c033",
+    "job_num_nodes": "1",
+    "job_partition": "long",
+    "job_qos": "normal",
+    "job_start_time": "1750537708",
+    "job_uid": "1500001370",
+    "job_user": "adam.burhan",
+    "jobid": "7037691",
+    "localid": "0",
+    "mem_per_node": "51200",
+    "nnodes": "1",
+    "nodeid": "0",
+    "nodelist": "cn-c033",
+    "prio_process": "0",
+    "procid": "0",
+    "script_context": "prolog_task",
+    "submit_dir": "/network/scratch/a/adam.burhan",
+    "submit_host": "login-1.server.mila.quebec",
+    "task_pid": "2688143",
+    "tasks_per_node": "1",
+    "tmpdir": "/tmp",
+    "topology_addr": "cn-c033",
+    "topology_addr_pattern": "node",
+    "tres_per_task": "cpu:4"
+  },
+  "cudaVersion": "12.8"
+}

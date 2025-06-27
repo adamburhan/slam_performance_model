@@ -2,6 +2,44 @@ import torch
 import torch.nn as nn
 import torchvision.models as models
 
+
+class BasicBlock(nn.Module):
+    
+    def __init__(self, in_planes, planes, stride=1):
+        """
+            :param in_planes: input channels
+            :param planes: output channels
+            :param stride: The stride of first conv
+        """
+        super(BasicBlock, self).__init__()
+        # Uncomment the following lines, replace the ? with correct values.
+        self.conv1 = nn.Conv2d(
+           in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(planes)
+        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3,
+                              stride=1, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(planes)
+
+        self.shortcut = nn.Sequential()
+        if stride != 1 or in_planes != planes:
+           self.shortcut = nn.Sequential(
+               nn.Conv2d(in_planes, planes,
+                         kernel_size=1, stride=stride, bias=False),
+               nn.BatchNorm2d(planes)
+           )
+
+    def forward(self, x):
+        # 1. Go through conv1, bn1, relu
+        # 2. Go through conv2, bn
+        # 3. Combine with shortcut output, and go through relu
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = torch.max(torch.tensor(0.0), out)
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out += self.shortcut(x)
+        return torch.max(torch.tensor(0.0), out)
+
 class ResNet18SLAMClassifier(nn.Module):
     def __init__(self, weights_path, num_classes, input_channels=6):
         super(ResNet18SLAMClassifier, self).__init__()

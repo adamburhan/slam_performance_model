@@ -1,0 +1,27 @@
+2025-06-22 15:53:50,035 INFO    MainThread:2862497 [wandb_setup.py:_flush():81] Current SDK version is 0.20.1
+2025-06-22 15:53:50,035 INFO    MainThread:2862497 [wandb_setup.py:_flush():81] Configure stats pid to 2862497
+2025-06-22 15:53:50,035 INFO    MainThread:2862497 [wandb_setup.py:_flush():81] Loading settings from /home/.config/wandb/settings
+2025-06-22 15:53:50,035 INFO    MainThread:2862497 [wandb_setup.py:_flush():81] Loading settings from /home/wandb/settings
+2025-06-22 15:53:50,036 INFO    MainThread:2862497 [wandb_setup.py:_flush():81] Loading settings from environment variables
+2025-06-22 15:53:50,036 INFO    MainThread:2862497 [wandb_init.py:setup_run_log_directory():703] Logging user logs to /tmp_log/wandb/offline-run-20250622_155350-qaeblo9i/logs/debug.log
+2025-06-22 15:53:50,036 INFO    MainThread:2862497 [wandb_init.py:setup_run_log_directory():704] Logging internal logs to /tmp_log/wandb/offline-run-20250622_155350-qaeblo9i/logs/debug-internal.log
+2025-06-22 15:53:50,036 INFO    MainThread:2862497 [wandb_init.py:init():831] calling init triggers
+2025-06-22 15:53:50,036 INFO    MainThread:2862497 [wandb_init.py:init():836] wandb.init called with sweep_config: {}
+config: {'model': {'architecture': 'alexnet_test', 'pretrained': True, 'weights_path': '/dataset/pretrained_weights/alexnet_weights.pth', 'input_channels': 3, 'num_classes_rot': 5, 'num_classes_trans': 5, 'output_dir': '/tmp_log/'}, 'dataset': {'root_dir': '/dataset/', 'context_len': 10, 'horizon': 5, 'batch_size': 32, 'num_workers': 4, 'feature_dim': 3, 'dataset_dict': {'train': {'euroc': ['MH_01_easy', 'MH_03_medium', 'MH_04_difficult', 'MH_05_difficult', 'V1_01_easy', 'V1_03_difficult', 'V2_01_easy', 'V2_02_medium', 'V2_03_difficult']}, 'val': {'euroc': ['MH_02_easy', 'V1_02_medium']}}}, 'data_transforms': {'resize': [224, 224], 'mean': [0.485, 0.456, 0.406], 'std': [0.229, 0.224, 0.225]}, 'optimization': {'optimizer': 'adamw', 'lr': 0.001, 'weight_decay': 0.01, 'momentum': 0.9}, 'training': {'task': 'classification', 'loss_function': 'CrossEntropyLoss', 'num_epochs': 25, 'eval_period': 1, 'print_period': 10, 'save_model_period': 5, 'save_statistics_period': 5}, 'misc': {'seed': 42, 'use_wandb': True, 'wandb_project': 'ood-slam', 'wandb_entity': 'udem-mila', 'log_dir': '/tmp_log/', 'exp_id': 0, 'exp_name': 'euroc_test_experiment', 'verbose': True}, '_wandb': {}}
+2025-06-22 15:53:50,036 INFO    MainThread:2862497 [wandb_init.py:init():872] starting backend
+2025-06-22 15:53:50,450 INFO    MainThread:2862497 [wandb_init.py:init():875] sending inform_init request
+2025-06-22 15:53:50,458 INFO    MainThread:2862497 [wandb_init.py:init():883] backend started and connected
+2025-06-22 15:53:50,459 INFO    MainThread:2862497 [wandb_init.py:init():956] updated telemetry
+2025-06-22 15:53:50,459 INFO    MainThread:2862497 [wandb_init.py:init():980] communicating run to backend with 90.0 second timeout
+2025-06-22 15:53:50,589 INFO    MainThread:2862497 [wandb_init.py:init():1032] starting run threads in backend
+2025-06-22 15:53:50,744 INFO    MainThread:2862497 [wandb_run.py:_console_start():2453] atexit reg
+2025-06-22 15:53:50,744 INFO    MainThread:2862497 [wandb_run.py:_redirect():2301] redirect: wrap_raw
+2025-06-22 15:53:50,745 INFO    MainThread:2862497 [wandb_run.py:_redirect():2370] Wrapping output streams.
+2025-06-22 15:53:50,745 INFO    MainThread:2862497 [wandb_run.py:_redirect():2393] Redirects installed.
+2025-06-22 15:53:50,747 INFO    MainThread:2862497 [wandb_init.py:init():1078] run started, returning control to user process
+2025-06-23 00:30:07,829 INFO    MainThread:2862497 [wandb_run.py:_finish():2219] finishing run udem-mila/ood-slam/qaeblo9i
+2025-06-23 00:30:07,829 INFO    MainThread:2862497 [wandb_run.py:_atexit_cleanup():2418] got exitcode: 0
+2025-06-23 00:30:07,830 INFO    MainThread:2862497 [wandb_run.py:_restore():2400] restore
+2025-06-23 00:30:07,830 INFO    MainThread:2862497 [wandb_run.py:_restore():2406] restore done
+2025-06-23 00:30:07,833 INFO    MainThread:2862497 [wandb_run.py:_footer_history_summary_info():4000] rendering history
+2025-06-23 00:30:07,834 INFO    MainThread:2862497 [wandb_run.py:_footer_history_summary_info():4032] rendering summary

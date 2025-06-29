@@ -152,7 +152,7 @@ class FusionClassifier(nn.Module):
         imgs -> [B, C, 3, H, W]
         stats -> [B, C, stat_input_dim]
         """
-        imgs, stats = x
+        stats, imgs = x
         
         B, C, _, H, W = imgs.shape
         

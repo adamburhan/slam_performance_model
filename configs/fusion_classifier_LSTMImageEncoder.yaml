@@ -3,7 +3,7 @@ model:
   architecture: 'fusion_classifier' # Model architecture: alexnet, resnet18, resnet34, etc.
   img_encoder: 'ImageEncoder'
   pretrained: true        
-  weights_path: '/dataset/pretrained_weights/alexnet_weights.pth'   
+  weights_path: '/dataset/pretrained_weights/resnet18_pretrained.pth'   
   input_channels: 3       # Number of input channels (e.g., 3 for RGB, 6 for stereo)
   num_classes_rot: 5
   num_classes_trans: 5
@@ -12,7 +12,7 @@ model:
 # Dataset parameters
 dataset:
   root_dir: '/dataset/'
-  context_len: 5
+  context_len: 10
   horizon: 3           
   batch_size: 32                                                                       
   num_workers: 4                        
@@ -58,7 +58,7 @@ optimization:
 # Training Parameters
 training:
   task: 'classification'                
-  loss_function: 'CrossEntropyLoss'              
+  loss_function: 'EMDSquaredLoss'              
   num_epochs: 25              
   eval_period: 1
   print_period: 10

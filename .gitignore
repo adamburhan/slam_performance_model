@@ -17,3 +17,4 @@ pytorch/
 !Dockerfile
 venv/
 wandb
+wandb_results/

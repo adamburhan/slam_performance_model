@@ -159,7 +159,7 @@ class MultiDataset(Dataset):
         # convert to tensors
         features_tensor = torch.tensor(np.array(context_features), dtype=torch.float32)
         images_tensor = torch.stack(context_images, dim=0)  # [context_len, 3, H, W]
-        images_tensor = images_tensor.permute(1, 0, 2, 3).reshape(3 * self.context_len, 224, 224)
+        #images_tensor = images_tensor.permute(1, 0, 2, 3).reshape(3 * self.context_len, 224, 224)
         label_tensor = torch.tensor(sample['label'], dtype=torch.float32)
         
         return (features_tensor, images_tensor), label_tensor
